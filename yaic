@@ -232,6 +232,7 @@ main() {
             :v|:version) msg "${0##*/}-0.1.0" ; continue ;;
             :*) msg "${0##*/}: Unknown Command '$msg'" "Type :help to get commands" ; continue ;;
             /names) msg="/names $c" ;;
+            /q) printf '%s\n' "/q" >> "$infile" ; break ;;
         esac
         printf '%s\n' "$msg"
     done >> "$infile"
