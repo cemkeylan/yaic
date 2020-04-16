@@ -216,7 +216,7 @@ main() {
     # Restore stty to what they were before. We do want this
     # to expand now, so the shellcheck error can be ignored.
     trap 'stty $prestty; printf "\033[m" ; kill -TERM 0' EXIT INT QUIT
-    stty -echonl
+    stty -echonl ${NOTEXT:+-}echo
 
     printf '\033[m'
     while read -r msg; do
