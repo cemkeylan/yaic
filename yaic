@@ -1,0 +1,243 @@
+#!/bin/sh -e
+
+# yaic: Yet another ii client.
+# Cem Keylan
+
+msg() { printf '\033[1m%s\033[m\n' "$@" >/dev/tty ;}
+die() { printf '\033[1;38;41merr: %s\033[m\n' "$@" >&2; exit 1;}
+
+usage() { printf '%s\n' "usage: ${0##*/} [options]" "" \
+    "  -s   Sets the server       (default: $s)" \
+    "  -n   Sets the nick         (default: $n)" \
+    "  -c   Sets the channel      (default: $c)" \
+    "  -r   Sets root irc dir     (default: $r)" \
+    "  -h   Sets hist value       (default: $h)" \
+    "  -l   Limits nick space     (default: $l)" \
+    "  -f   Sets the fold value   (default: $f)" ""
+    exit 1
+}
+
+# Function for bookmarking a location in the chat.
+mark() { printf '%s -!- -----------------------------------------------------------------------\n' \
+                "$(date +%s)" >> "$outfile" ;}
+
+gethelp() {
+    # This is the helper function called
+    # by :h|:help
+    msg \
+        "[1;35mList of Commands" \
+        ":c|:chan            Prints a list of open channels" \
+        ":c|:chan [channel]  Changes the channel to the given channel" \
+        ":h|:help            Prints this help information" \
+        ":m                  Marks the current position" \
+        ":text               Enables outputting your own messages" \
+        ":notext             Disables outputting your own messages" \
+        ":q                  Exits the program (not ii)" \
+        ":x                  Marks the current position and exits" \
+        ":v|:version         Prints the version"
+}
+
+getchan() {
+    # Gets a list of all active channels in the server
+    # Does not include the server itself
+    msg "[35mChannel list"
+    for chan in "$r/$s/"* ; do
+        # We don't want this to return errors.
+        # shellcheck disable=2015
+        [ -p "$chan/in" ] && printf '%s\n' "${chan##*/}" >/dev/tty ||:
+    done
+}
+
+checkchan() {
+    # Checks if the given channel is open.
+    [ -p "$r/$s/$1/in" ] || {
+        msg "Channel '$1' doesn't seem to be open"
+        return 1
+    }
+}
+
+changechan() {
+    # Kill the tail from the previous channel
+    kill "$tailpid" ||:
+
+    # Restore the original stty configuration
+    # and reset the colour.
+    stty "$prestty" ; printf '\033[m'
+
+    # unset the CHAN variable so that it doesn't
+    # try to change the channel when the user
+    # is trying to quit.
+    unset CHAN
+
+    # Run the main function with the new channel
+    main -s "$s" -n "$n" -c "$1" -r "$r" -h "$h" -l "$l" -f "$f"
+}
+
+statusbar() {
+    # If NOBAR variable is set, doesn't add a statusbar line.
+    [ -z "$NOBAR" ] || return 0
+
+    # Get the channel name to a variable. This is done to remove
+    # '/.' if it's the main server output.
+    chan="${c#.}"
+
+    # This horrible looking printf function does the following,
+    # \033[s         - Saves the current position
+    # \033[H         - Goes to the top of the screen
+    # \033[K         - Removes that line
+    # \033[1;37;40m  - Changes colour to black background and white foreground
+    # "$s/$c"        - Prints the channel name
+    # \033[u         - Returns back to the previous cursor position
+    # \033[m         - Restores the colour
+    printf '\033[s\033[H\033[K\033[1;37;40m%s\033[u\033[m' "$ss${chan:+/}$chan" >/dev/tty
+}
+
+main() {
+    # Set default values.
+    : "${f:=60}"  "${n:=${USER:-user}}"
+    : "${c:=""}"  "${r:=$HOME/irc}"
+    : "${h:=30}"  "${l:=10}"
+    : "${s:=irc.freenode.net}" 
+
+    case "$1" in --help|help) usage ; esac
+
+    # Parse all arguments.
+    while getopts ':s:n:c:r:h:l:f:' opt ; do
+        case "$opt" in
+            s) s="$OPTARG" ;;  n) n="$OPTARG" ;;
+            c) c="$OPTARG" ;;  r) r="$OPTARG" ;;
+            h) h="$OPTARG" ;;  l) l="$OPTARG" ;;
+            f) f="$OPTARG" ;;
+            :) die "'-$OPTARG' requires a value" ;;
+            ?) die "${0##*/}: invalid option '-$OPTARG'" ;;
+        esac
+    done
+    
+    # Save in file and out file in a variable.
+    infile="$r/$s/$c/in"
+    outfile="$r/$s/$c/out"
+
+    # Save the initial stty state in a variable
+    # to make sure it doesn't get overriden when
+    # changing channels.
+    prestty="$(stty -g)"
+
+    # Check if we are using sbase date, which parses
+    # Unix epoch without an '@' sign. We don't want
+    # this to return errors.
+    # shellcheck disable=2015
+    date -d @0 >/dev/null 2>&1 && GNUDATE=1 ||:
+
+    # Save a short name of the server.
+    # This will be used for server messages,
+    # announcements, etc.
+    ss=${s%.*} ss=${ss#*.}
+
+    # Check for the existence of in and out files.
+    # Exit if in file doesn't exist.
+    # Create it if out file doesn't exist.
+    [ -p "$infile"  ] || die "in file could not be found, is the daemon available?"
+    [ -e "$outfile" ] || touch "$outfile"
+
+    # Clear the screen for prettier output
+    clear
+
+    # Start tail with the history variable. We read the input in
+    # 3 different variables. First word is always the date. The
+    # second word is usually the author's nickname, and the rest
+    # of the line is the message. We will deal with the exceptions
+    # in the function itself.
+    tail -f -n "$h" "$outfile" | while read -r date auth msg; do
+        # Restore colour.
+        printf '\033[m'
+
+        # Get the time in a pretty format. The date is in Epoch
+        # format. We convert it to [12:34] format.
+        cleardate="$(date -d "${GNUDATE:+@}$date" '+[%H:%M]')"
+
+        # Nicknames are in <nick> format and server notifications
+        # are in -!- format. If we are not dealing with them, then
+        # it is a server message (not a server notification). We
+        # need to seperate them in a hacky way.
+        case "$auth" in \<*\>|-!-) ;; *) msg="$auth $msg" auth="$ss" ; esac
+
+        # Remove the <*> from nicks.
+        auth="${auth%>}"; auth="${auth#<}"
+
+        # If the nickname is the user's, print the nick in yellow.
+        # Other nicknames are printed in blue.
+        # Server messages are printed grey to be not distracting.
+        case "$auth" in
+            "$n")  printf '%s \033[1;33m%-10.*s \033[m' "$cleardate" "$l" "$auth" ;;
+            "-!-") printf '\033[37m%s %-10.*s ' "$cleardate" "$l" "$auth"         ;;
+            "$ss") printf '%s %-10.*s '         "$cleardate" "$l" "$auth"         ;;
+            *)     printf '%s \033[1;36m%-10.*s \033[m' "$cleardate" "$l" "$auth" ;;
+        esac
+
+        # This prints the message and fold it. It doesn't add any
+        # space if it is the first line. But adds space equal to
+        # the space given for the time, nick, and two spaces.
+        firstline=1
+        printf '%s\n' "$msg" | fold -sw "$f" | while read -r line; do
+            [ "$firstline" ] || printf '%*s' "$(( ${#cleardate} + l + 2 ))" ''
+            printf '%s\n' "$line"; unset firstline
+        done
+
+        # Refresh the statusbar line.
+        statusbar
+
+        # Restore colour.
+        printf '\033[m'
+    done >/dev/tty &
+
+    # Save the process id of tail so that we don't have any
+    # issues when we are trying to switch channels.
+    tailpid=$!
+
+    # Restore stty to what they were before. We do want this
+    # to expand now, so the shellcheck error can be ignored.
+    # shellcheck disable=2064
+    trap "stty '$(stty -g)'; printf '\033[m' ; kill -TERM 0" EXIT INT QUIT
+    stty -echonl
+
+    printf '\033[m'
+    while read -r msg; do
+        # Go up, remove the line, and go back down.
+        # Keeps it clean. If we have 'stty -echo' set,
+        # we don't need to do this.
+        [ "$NOTEXT" ] || printf '\033[A\033[K' >/dev/tty
+
+        # Refresh the statusbar line.
+        statusbar
+
+        case "$msg" in
+            '') continue ;;
+            :c|:chan) getchan ; continue ;;
+            ':c '*|':chan '*)
+                # Check if the channel exists beforehand
+                # so that the program outputs an error
+                # instead of exiting. Set a CHAN variable
+                # and break if the channel exists
+                if checkchan "${msg#:c* }" ; then
+                    CHAN="${msg#:c* }"
+                    break
+                else continue ; fi
+            ;;
+            :h|:help) gethelp ; continue ;;
+            :q) break ;;
+            :text) unset NOTEXT ; stty echo ; continue ;;
+            :notext) NOTEXT=1 ; stty -echo ; continue ;;
+            :m) mark; continue ;;
+            :x) mark; break    ;;
+            :v|:version) msg "${0##*/}-0.1.0" ; continue ;;
+            :*) msg "${0##*/}: Unknown Command '$msg'" "Type :help to get commands" ; continue ;;
+            /names) msg="/names $c" ;;
+        esac
+        printf '%s\n' "$msg"
+    done >> "$infile"
+
+    [ "$CHAN" ] && changechan "$CHAN"
+    
+}
+
+main "$@"
