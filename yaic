@@ -196,8 +196,7 @@ main() {
 
     # Restore stty to what they were before. We do want this
     # to expand now, so the shellcheck error can be ignored.
-    # shellcheck disable=2064
-    trap "stty '$(stty -g)'; printf '\033[m' ; kill -TERM 0" EXIT INT QUIT
+    trap 'stty $prestty; printf "\033[m" ; kill -TERM 0' EXIT INT QUIT
     stty -echonl
 
     printf '\033[m'
