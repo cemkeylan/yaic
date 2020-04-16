@@ -169,19 +169,28 @@ main() {
         # Server messages are printed grey to be not distracting.
         case "$auth" in
             "$n")  printf '%s \033[1;33m%-10.*s \033[m' "$cleardate" "$l" "$auth" ;;
-            "-!-") printf '\033[37m%s %-10.*s ' "$cleardate" "$l" "$auth"         ;;
+            "-!-") printf '\033[37m%s %-10.*s ' "$cleardate" "$l" "$auth";        ;;
             "$ss") printf '%s %-10.*s '         "$cleardate" "$l" "$auth"         ;;
-            *)     printf '%s \033[1;36m%-10.*s \033[m' "$cleardate" "$l" "$auth" ;;
+            *)     printf '%s \033[1;36m%-10.*s \033[m' "$cleardate" "$l" "$auth"
+                   highlight=1
+                   ;;
         esac
 
-        # This prints the message and fold it. It doesn't add any
+        # This prints the message and folds it. It doesn't add any
         # space if it is the first line. But adds space equal to
-        # the space given for the time, nick, and two spaces.
+        # the space given for the time, nick, and two spaces. If the
+        # user's nick is inside the message string, highlight it, but
+        # only once. We get the highlight value only for messages from
+        # other users (i.e. not server messages or your own messages).
         firstline=1
-        printf '%s\n' "$msg" | fold -sw "$f" | while read -r line; do
+        printf '%s\n' "$msg" | sed "s/$n/${highlight:+[1;33m}$n${highlight:+[m}/" | fold -sw "$f" | while read -r line; do
             [ "$firstline" ] || printf '%*s' "$(( ${#cleardate} + l + 2 ))" ''
-            printf '%s\n' "$line"; unset firstline
+            printf '%s\n' "$line" ; unset firstline
         done
+
+        # Unset the highlight variable so that we don't highlight
+        # server messages.
+        unset highlight
 
         # Refresh the statusbar line.
         statusbar
