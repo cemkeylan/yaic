@@ -6,6 +6,13 @@
 msg() { printf '\033[1m%s\033[m\n' "$@" >/dev/tty ;}
 die() { printf '\033[1;38;41merr: %s\033[m\n' "$@" >&2; exit 1;}
 
+
+toggle() {
+    # A hacky way to create and remove variables
+    eval "[ \"\$$1\" ] && unset $1 && return 0 ||:"
+    eval "$1=1"
+}
+
 usage() { printf '%s\n' "usage: ${0##*/} [options]" "" \
     "  -s   Sets the server       (default: $s)" \
     "  -n   Sets the nick         (default: $n)" \
@@ -30,8 +37,8 @@ gethelp() {
         ":c|:chan [channel]  Changes the channel to the given channel" \
         ":h|:help            Prints this help information" \
         ":m                  Marks the current position" \
-        ":text               Enables outputting your own messages" \
-        ":notext             Disables outputting your own messages" \
+        ":s                  Toggles server notifications" \
+        ":t                  Toggles outputting your own messages" \
         ":q                  Exits the program (not ii)" \
         ":x                  Marks the current position and exits" \
         ":v|:version         Prints the version"
@@ -161,6 +168,9 @@ main() {
         # need to seperate them in a hacky way.
         case "$auth" in \<*\>|-!-) ;; *) msg="$auth $msg" auth="$ss" ; esac
 
+        # Don't print server messages if NOSERVER is set.
+        case "$auth" in \<*\>);; *) [ "$NOSERVER" ] && continue ; esac
+
         # Remove the <*> from nicks.
         auth="${auth%>}"; auth="${auth#<}"
 
@@ -218,6 +228,7 @@ main() {
         # Refresh the statusbar line.
         statusbar
 
+        # shellcheck disable=2015
         case "$msg" in
             '') continue ;;
             :c|:chan) getchan ; continue ;;
@@ -233,10 +244,10 @@ main() {
             ;;
             :h|:help) gethelp ; continue ;;
             :q) break ;;
-            :text) unset NOTEXT ; stty echo ; continue ;;
-            :notext) NOTEXT=1 ; stty -echo ; continue ;;
+            :t) toggle NOTEXT ; [ "$NOTEXT" ] && stty -echo || stty echo ; continue ;;
             :m) mark; continue ;;
             :x) mark; break    ;;
+            :s) toggle NOSERVER ; CHAN="${c:-.}" ; break ;;
             :v|:version) msg "${0##*/}-0.1.0" ; continue ;;
             :*) msg "${0##*/}: Unknown Command '$msg'" "Type :help to get commands" ; continue ;;
             /names) msg="/names $c" ;;
