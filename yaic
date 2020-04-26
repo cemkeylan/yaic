@@ -36,6 +36,7 @@ gethelp() {
         ":c|:chan            Prints a list of open channels" \
         ":c|:chan [channel]  Changes the channel to the given channel" \
         ":h|:help            Prints this help information" \
+        ":hist               Changes the history size" \
         ":m                  Marks the current position" \
         ":s                  Toggles server notifications" \
         ":t                  Toggles outputting your own messages" \
@@ -243,6 +244,11 @@ main() {
                 else continue ; fi
             ;;
             :h|:help) gethelp ; continue ;;
+            :hist*)
+                # Word splitting is intentional here.
+                # shellcheck disable=2086
+                [ ${msg#:hist} ] || { msg "Specify a number" ; continue ;}
+                h="${msg#:hist* }" CHAN="${c:-.}" ; break ;;
             :q) break ;;
             :t) toggle NOTEXT ; [ "$NOTEXT" ] && stty -echo || stty echo ; continue ;;
             :m) mark; continue ;;
