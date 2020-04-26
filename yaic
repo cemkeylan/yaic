@@ -33,6 +33,7 @@ gethelp() {
     # by :h|:help
     msg \
         "[1;35mList of Commands" \
+        ":b                  Toggles the upper bar" \
         ":c|:chan            Prints a list of open channels" \
         ":c|:chan [channel]  Changes the channel to the given channel" \
         ":h|:help            Prints this help information" \
@@ -232,6 +233,7 @@ main() {
         # shellcheck disable=2015
         case "$msg" in
             '') continue ;;
+            :b) toggle NOBAR ; CHAN="${c:-.}" ; break ;;
             :c|:chan) getchan ; continue ;;
             ':c '*|':chan '*)
                 # Check if the channel exists beforehand
