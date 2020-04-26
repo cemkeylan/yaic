@@ -250,6 +250,7 @@ main() {
             :s) toggle NOSERVER ; CHAN="${c:-.}" ; break ;;
             :v|:version) msg "${0##*/}-0.1.0" ; continue ;;
             :*) msg "${0##*/}: Unknown Command '$msg'" "Type :help to get commands" ; continue ;;
+            /msg) msg="/j ${msg#/msg}" ;;
             /names) msg="/names $c" ;;
             /q) printf '%s\n' "/q" >> "$infile" ; break ;;
         esac
