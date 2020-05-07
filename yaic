@@ -181,12 +181,12 @@ main() {
         # Other nicknames are printed in blue.
         # Server messages are printed grey to be not distracting.
         case "$auth" in
-            "$n")  printf '%s \033[1;33m%-10.*s \033[m' "$cleardate" "$l" "$auth" ;;
-            "NOTE")printf '%s \033[1;31m%-10.*s \033[m' "$cleardate" "$l" "$auth" ;;
-            "-!-") printf '\033[37m%s %-10.*s ' "$cleardate" "$l" "$auth";        ;;
-            "---") printf '\033[37m%s %-10.*s ' "$cleardate" "$l" "$auth";        ;;
-            "$ss") printf '%s %-10.*s '         "$cleardate" "$l" "$auth"         ;;
-            *)     printf '%s \033[1;36m%-10.*s \033[m' "$cleardate" "$l" "$auth"
+            "$n")  printf '%s \033[1;33m%-*.*s \033[m' "$cleardate" "$l" "$l" "$auth" ;;
+            "NOTE")printf '%s \033[1;31m%-*.*s \033[m' "$cleardate" "$l" "$l" "$auth" ;;
+            "-!-") printf '\033[37m%s %-*.*s ' "$cleardate" "$l" "$l" "$auth";        ;;
+            "---") printf '\033[37m%s %-*.*s ' "$cleardate" "$l" "$l" "$auth";        ;;
+            "$ss") printf '%s %-*.*s '         "$cleardate" "$l" "$l" "$auth"         ;;
+            *)     printf '%s \033[1;36m%-*.*s \033[m' "$cleardate" "$l" "$l" "$auth"
                    highlight=1
                    ;;
         esac
