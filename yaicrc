@@ -1,0 +1,21 @@
+# Example configuration for yaic
+# This will be sourced by program just like
+# a shellrc.
+
+# Nickname (defaults to your system username)
+n=
+
+# ii Root Directory (defaults to ~/irc)
+r=
+
+# Default channel (defaults to the server channel)
+c=
+
+# Default history size
+h=
+
+# Set to 1 to disable bar. Leave empty otherwise.
+NOBAR=
+
+# Set to 1 to disable server messages. Leave empty otherwise.
+NOSERV=

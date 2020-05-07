@@ -273,4 +273,10 @@ main() {
     
 }
 
+# Load a configuration file if it exists, very beneficial if
+# you don't want to set them on your shellrc.
+# shellcheck disable=1090
+[ -r "${XDG_CONFIG_HOME:-$HOME/.config}/yaicrc" ] &&
+    . "${XDG_CONFIG_HOME:-$HOME/.config}/yaicrc"
+
 main "$@"
