@@ -25,7 +25,7 @@ usage() { printf '%s\n' "usage: ${0##*/} [options]" "" \
 }
 
 # Function for bookmarking a location in the chat.
-mark() { printf '%s -!- -----------------------------------------------------------------------\n' \
+mark() { printf '%s --- ---------------------------------------------------\n' \
                 "$(date +%s)" >> "$outfile" ;}
 
 gethelp() {
@@ -169,10 +169,10 @@ main() {
         # are in -!- format. If we are not dealing with them, then
         # it is a server message (not a server notification). We
         # need to seperate them in a hacky way.
-        case "$auth" in \<*\>|-!-) ;; *) msg="$auth $msg" auth="$ss" ; esac
+        case "$auth" in \<*\>|-!-|---) ;; *) msg="$auth $msg" auth="$ss" ; esac
 
         # Don't print server messages if NOSERVER is set.
-        case "$auth" in \<*\>);; *) [ "$NOSERVER" ] && continue ; esac
+        case "$auth" in \<*\>|---);; *) [ "$NOSERVER" ] && continue ; esac
 
         # Remove the <*> from nicks.
         auth="${auth%>}"; auth="${auth#<}"
@@ -184,6 +184,7 @@ main() {
             "$n")  printf '%s \033[1;33m%-10.*s \033[m' "$cleardate" "$l" "$auth" ;;
             "NOTE")printf '%s \033[1;31m%-10.*s \033[m' "$cleardate" "$l" "$auth" ;;
             "-!-") printf '\033[37m%s %-10.*s ' "$cleardate" "$l" "$auth";        ;;
+            "---") printf '\033[37m%s %-10.*s ' "$cleardate" "$l" "$auth";        ;;
             "$ss") printf '%s %-10.*s '         "$cleardate" "$l" "$auth"         ;;
             *)     printf '%s \033[1;36m%-10.*s \033[m' "$cleardate" "$l" "$auth"
                    highlight=1
