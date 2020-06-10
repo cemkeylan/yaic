@@ -38,6 +38,7 @@ gethelp() {
         ":c|:chan [channel]  Changes the channel to the given channel" \
         ":h|:help            Prints this help information" \
         ":hist               Changes the history size" \
+        ":l [length]         Change the limit for nick space" \
         ":m                  Marks the current position" \
         ":n [note]           Adds a note to the current position" \
         ":s                  Toggles server notifications" \
@@ -257,6 +258,7 @@ main() {
             :q) break ;;
             :t) toggle NOTEXT ; [ "$NOTEXT" ] && stty -echo || stty echo ; continue ;;
             ":n "*) printf '%s <NOTE> %s\n' "$(date +%s)" "${msg#:n }" >> "$outfile" ; continue ;;
+            ":l "*) l="${msg#:l* }" CHAN="${c:-.}"; break ;;
             :m) mark; continue ;;
             :x) mark; break    ;;
             :s) toggle NOSERVER ; CHAN="${c:-.}" ; break ;;
