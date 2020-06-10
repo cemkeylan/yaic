@@ -13,7 +13,8 @@ toggle() {
     eval "$1=1"
 }
 
-usage() { printf '%s\n' "usage: ${0##*/} [options]" "" \
+usage() { printf '%s\n' "usage: ${0##*/} [-s server] [-n nick] [-c chan] [-r dir]" \
+    "            [-h size] [-l length] [f fold]" "" \
     "  -s   Sets the server       (default: $s)" \
     "  -n   Sets the nick         (default: $n)" \
     "  -c   Sets the channel      (default: $c)" \
